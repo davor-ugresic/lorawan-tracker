@@ -1,0 +1,33 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Origin: LoRaWAN Tracker
+Label: LoRaWAN Tracker
+Suite: stable
+Codename: stable
+Date: Wed, 08 Jul 2026 18:26:12 +0000
+Architectures: all
+Components: main
+Description: LoRaWAN tracker packages for Raspberry Pi
+MD5Sum:
+ 723a697523a047c9c385a0cdc79dfe08 741 main/binary-all/Packages
+ 6818cdd99e586112b49984d07ba90142 519 main/binary-all/Packages.gz
+SHA256:
+ 9db8f59f4bc1cc0d3c1f0c0d40132c6a8189b64df87e1c7d05f3cd79cb5f453e 741 main/binary-all/Packages
+ 05e673a35ca46a80f7c36a23f2f1d544a54dd6445f447a227537d552e9119b37 519 main/binary-all/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEE4Mj7kM0wg2UsCx0u+n36cm1tJvUFAmpOlkQACgkQ+n36cm1t
+JvVqoRAApc7XYtPsmYgsGrQDn3sAlLZ4NPTaf5Nd5gRnA9kfmNgjItDnLugIrr3i
+qKGVJWnv4H1iwSEKZonM2ujQl4ASlq6l0qQDvWfcMjqZS3Nps70WTY4idrcoMb7+
+51kvO25RD05V6r7XCmb2jxk2BHEKupUmozI23cxOr/J0i5NUDGizndNmj74/Q6GM
+NEIvnECv8Q+7uiyI/56DcNGge3PAhyIlMG3PPkbEf8KFyK7s0NSFnCpw4MlDnMMr
+IyRf1LIrZIJhL4SKyDEKGLVywrY3Y+QXLQsH1NRv6hL5JVqyN6kRVwh9aXzx6x0U
+zZPdtFXkPI2/pX7dINyrePOUW+b4tP1i5G7j+jDfy17P7/ivAqc9TD8dDS4TVz5K
+K2SFWrqAv2NIQjLe8qFCLTosIv5oXydgq5eHl3V30SwkPwxw+VcBQmNRGrG3iS8/
+msksTQSR0x52MNKY/OYKc4ex7csQAzc1DHsgODzF+pzRD+xupvzzm/kvCogDT6PI
+NctvhWKinoFSOGxivR/Ph/eMMALCr/YSbBc7WF7SJWUm6qhZykZDjgjaKx2LbGbj
+aZ9DC99kyg4JDysFfqA94YsJpxnTV1PpKwLzQ4Fiduh4ZDVcMTPS11GIdW8wC8Ej
+vxO1zBeHlHUS8uQBz1M51RmCxJ3bapePByJV52NOfQzdchdloMk=
+=L19D
+-----END PGP SIGNATURE-----
