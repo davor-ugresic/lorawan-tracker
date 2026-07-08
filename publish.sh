@@ -80,5 +80,5 @@ git push origin main
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Published!  ${DEB_NAME} is now live."
-echo "  Friend can update with:  sudo apt update && sudo apt upgrade"
+echo "  Friends can update with:  sudo apt update && sudo apt upgrade"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
