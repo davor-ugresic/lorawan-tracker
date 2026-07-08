@@ -1,15 +1,15 @@
 Package: lorawan-tracker
-Version: 1.2.0
+Version: 1.3.0
 Architecture: all
 Maintainer: Pi LoRa User <user@example.com>
-Installed-Size: 220
+Installed-Size: 272
 Depends: python3 (>= 3.9), python3-tk, python3-spidev, python3-pycryptodome
 Recommends: python3-rpi.gpio | python3-lgpio
-Filename: pool/main/lorawan-tracker_1.2.0_all.deb
-Size: 37726
-MD5sum: 431058dd6e770d0d4a284c401616dbe1
-SHA1: d51af6c384c98159907c18743a39d5c46c91729b
-SHA256: eaf430d9418a7ec37e0669ddebb94851093657d9f2bce2dfddf0ad0a666ff6f6
+Filename: pool/main/lorawan-tracker_1.3.0_all.deb
+Size: 48664
+MD5sum: b3ddb4bbc2f175e3b87294ac76ee0d69
+SHA1: eaebc90679e7f210936c22b4c552839dd0259d66
+SHA256: 9840f150c26aadb4f98b2624b41cadcfb3979de87f11b04e8990905780d1dfd0
 Section: misc
 Priority: optional
 Homepage: https://www.waveshare.com/wiki/SX1262_LORAWAN_HAT
