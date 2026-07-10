@@ -5,29 +5,29 @@ Origin: LoRaWAN Tracker
 Label: LoRaWAN Tracker
 Suite: stable
 Codename: stable
-Date: Fri, 10 Jul 2026 10:04:17 +0000
+Date: Fri, 10 Jul 2026 10:21:21 +0000
 Architectures: all
 Components: main
 Description: LoRaWAN tracker packages for Raspberry Pi
 MD5Sum:
- a09706fa63ee55739878d258fa3903b0 741 main/binary-all/Packages
- f4ebd4233c6cd76254af17ce6e293e07 519 main/binary-all/Packages.gz
+ e4ce16687fc6e84e0279e1c6d5a4f324 741 main/binary-all/Packages
+ c2dd90934788c54f1d042b4d4d3e0660 516 main/binary-all/Packages.gz
 SHA256:
- 3748512351e7967d089c894c23fc7b0297f1fb56fc0073c108226f2bd6cf63f3 741 main/binary-all/Packages
- 79d4ec953046dcae368c47f56c63703a1e8bdd46c69c8efd62f77c76a814beab 519 main/binary-all/Packages.gz
+ 88fda41950c0c4dddbdd0b3125456b6006da8d356d6c4f3607d3ada2686b2dd8 741 main/binary-all/Packages
+ 04338126e3a950c29597fd5d456ccaf40c5052876c767a8fccf06a3ecda42768 516 main/binary-all/Packages.gz
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCgAdFiEETfYiPUQM4BAKgmK2uIfLjBSNW8cFAmpQw6EACgkQuIfLjBSN
-W8egrQ//Z7i0u+OLft65bXVtt/nOShaoCASi1WLDtqxqYXFq3UaH7QiNLOYHegt8
-hj4SvovBFj+qvHusHZ9dImPT9lYFcQqmnPoPnjKMWv9xfczKPsqOnkKMbT6VYku8
-8vIHealCtEc0QeZT3a4qlXzfEP5lTA7fSvJwUmtH9Ukq6CkmKJ6IyHYV/Mz239nX
-FSisAHjSCRWySWY/xnFfpfPSnBJ/zJF3xtBNVXJCMkj9SZo83gUHr4O2obJQm2hf
-gDsoWnR7FyA+90rtlbE8WDNTH4dv/QtA3A1yTTmqjnWP4dPGGg1Upof01KF/9/EW
-TO8/58WQmhN/Tccvwbnskf4Qx8PtbdNUi6ppbHm5Hd1OrvQo8xyq+uKFQjrpQeZj
-WrjsDIxkCIxePfCRajCQ0vn91J70FNQnxQ3RRwmvcynJ0h5VfOs6JhEgXQVK2yWh
-MJ1hBSyXVJagG41pys5EYZCnkQgiHKI7AHJPhbsBVu6AAu+4nbomFpzPh5N2C0Wp
-viiSxH6s8xLLSrncy4/SoT3Gi35egpnMmQlo/8IAKSFYdZnvORgPCzvEj8MGcH8a
-gnMyLdrmw1zfsdujTmJlzIYISGR5FebSRJQQKElTrkqxpF0RJzs3D+v3iJY3MsFC
-n8srbWKu7ngA72ONjn8QBYWYAkRr2GszNZZm+V8dzZcSM5pCMkE=
-=rGbH
+iQIzBAEBCgAdFiEETfYiPUQM4BAKgmK2uIfLjBSNW8cFAmpQx6EACgkQuIfLjBSN
+W8dRjRAAgnQSE8nEB4gdNFpFyEt9u+Mmrz6ZCrdo7K/dnip2OHjv6aCc3LkFq9hu
+yDANmgkeKUuZtA9/UEIjgHyJKViocvDyPv3R/7eimgWwe+h2ErFj90CK3++nEIWS
+5S3xVFhQ0h5ofOXY2MvTjSqTuQEJNw0aH3ghEZ1j1pbPOE/WgvRiDivuzUy2XBpa
+xpAGSSbWkrQVzbiI65d9MqIqh0AD3JfLiBpS7YooA0nxGRpkh4RXSjg+u/OoW/oc
+L4w5Cj6XImPa6y0688AjUot6JJyLNOOLAqL6yqlGEmsjgZXywy+hmSBvLhcPGIgU
+TE0QR7T+AnLB+GPKqxLSWLILAsIYQTL63mQt/X0XPPfG1z5eTXuCEn0h7/Js8Th3
++CcF+PCE5DMbcziOHx8SqqHpF7iTZeqlXh6sp9gM9xPGSDSuSm6rMV6krg47qkKG
+mgwt+HiEqu1KhGSDrDWfDJUhvGP7/a2rcYBMq8gncVoyx64WEbejBS8jsrmKs9Nk
+KhialGUOrEgtkreB0k/eOVIEF/RkkWnFiGdgwySy/RR/dCp+wv1kyVRnljTS6vgc
+2g7IsvlhwlofcSwpfit8hjpI0FcIubrvngBu/PxY4Lw3pnwqA4IsKgDq+bf24Afx
+xHOToiBN81pWYXjvAw7eb8JmolonHPw3nJR9F9uJ6ZGp+ImEd6E=
+=nUhU
 -----END PGP SIGNATURE-----
