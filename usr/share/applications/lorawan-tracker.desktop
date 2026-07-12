@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Pi LoRa Device
+GenericName=LoRaWAN Tracker
+Comment=LoRaWAN OTAA tracker for Waveshare SX126x HAT
+Exec=lorawan-tracker
+Icon=network-wireless
+Terminal=false
+Categories=Utility;Network;
+Keywords=LoRa;LoRaWAN;IoT;GPS;tracker;

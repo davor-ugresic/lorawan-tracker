@@ -1,0 +1,7 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: lorawan-tracker
+Upstream-Contact: Pi LoRa User <user@example.com>
+
+Files: *
+Copyright: 2026 Pi LoRa User <user@example.com>
+License: MIT

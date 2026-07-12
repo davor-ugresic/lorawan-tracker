@@ -1,0 +1,6 @@
+{
+  "app_eui": "0011223344556677",
+  "dev_eui": "AABBCCDDEEFF0011",
+  "app_key": "00112233445566778899AABBCCDDEEFF",
+  "scan_eu868": true
+}
