@@ -325,7 +325,7 @@ def _config_page() -> str:
         "gps_timeout":      cfg.get("gps_timeout", 90),
         "uplink_interval":  cfg.get("uplink_interval", 10),
         "uplink_sf":        cfg.get("uplink_sf", 7),
-        "confirmed_uplink": bool(cfg.get("confirmed_uplink", True)),
+        "confirmed_uplink": bool(cfg.get("confirmed_uplink", False)),
         "scan_eu868":       bool(cfg.get("scan_eu868", False)),
         "tx_power":         cfg.get("tx_power", 14),
         "reset_pin":        cfg.get("reset_pin", 18),

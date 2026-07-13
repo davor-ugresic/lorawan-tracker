@@ -99,7 +99,7 @@ DEFAULTS = {
     "join_retry_delay": 30,
     "tx_timeout": 10.0,
     "scan_eu868": True,
-    "confirmed_uplink": True,
+    "confirmed_uplink": False,
 }
 
 
@@ -586,7 +586,7 @@ class JoinGui(tk.Tk):
             var.set(str(value))
 
         self.scan_eu868.set(bool(merged.get("scan_eu868", False)))
-        self.confirmed_uplink.set(bool(merged.get("confirmed_uplink", True)))
+        self.confirmed_uplink.set(bool(merged.get("confirmed_uplink", False)))
         self._set_status("Profile loaded")
 
     def _service_profile_path(self) -> Path:

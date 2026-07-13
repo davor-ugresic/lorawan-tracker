@@ -95,6 +95,7 @@ def build_config(creds: dict[str, str]) -> dict[str, object]:
         "scan_eu868": True,
         "join_retry_delay": 30,
         "join_accept_timeout": 12.0,
+        "confirmed_uplink": False,
     }
 
 
