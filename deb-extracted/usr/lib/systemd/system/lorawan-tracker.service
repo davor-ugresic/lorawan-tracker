@@ -1,0 +1,19 @@
+[Unit]
+Description=LoRaWAN Tracker (headless OTAA join + GPS uplink)
+Documentation=https://github.com/davor-ugresic/lorawan-tracker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Run as root for SPI/GPIO access to the LoRa HAT. A dedicated HOME keeps the
+# service's status/track files out of /root.
+User=root
+Environment=HOME=/var/lib/lorawan-tracker
+WorkingDirectory=/var/lib/lorawan-tracker
+ExecStart=/usr/bin/python3 -u /usr/lib/lorawan-tracker/lorawan_service.py --config /etc/lorawan-tracker/lorawan_join.json
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

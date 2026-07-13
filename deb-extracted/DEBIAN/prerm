@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
 
-# Attempt to stop any user-level lorawan-tracker service
-# (best-effort; may fail if no user is logged in via loginctl)
-if command -v systemctl &>/dev/null; then
-    systemctl --global disable lorawan-tracker.service 2>/dev/null || true
+# Stop the system service before removal/upgrade (best-effort).
+if [[ -d /run/systemd/system ]] && command -v systemctl &>/dev/null; then
+    systemctl stop lorawan-tracker.service 2>/dev/null || true
 fi
+
+exit 0

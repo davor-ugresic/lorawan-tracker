@@ -1,0 +1,15 @@
+#!/bin/bash
+# postrm — clean up the systemd service on removal.
+set -e
+
+if [[ -d /run/systemd/system ]] && command -v systemctl &>/dev/null; then
+    systemctl disable lorawan-tracker.service 2>/dev/null || true
+    systemctl daemon-reload 2>/dev/null || true
+fi
+
+# On full purge, remove generated credentials and state.
+if [[ "$1" == "purge" ]]; then
+    rm -rf /etc/lorawan-tracker /var/lib/lorawan-tracker
+fi
+
+exit 0

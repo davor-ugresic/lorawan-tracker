@@ -1,40 +1,89 @@
 #!/bin/bash
+# postinst — headless setup for lorawan-tracker.
+# Runs on the target Raspberry Pi during `apt install`. Idempotent.
 set -e
 
-# Install LoRaRF from PyPI (not available as an apt package)
-echo "Installing LoRaRF Python library..."
-if pip3 install --break-system-packages LoRaRF 2>/dev/null; then
-    echo "  LoRaRF installed."
-elif pip3 install LoRaRF 2>/dev/null; then
-    echo "  LoRaRF installed."
+APP_DIR="/usr/lib/lorawan-tracker"
+CONFIG_DIR="/etc/lorawan-tracker"
+CONFIG_FILE="${CONFIG_DIR}/lorawan_join.json"
+STATE_DIR="/var/lib/lorawan-tracker"
+SERVICE="lorawan-tracker.service"
+REBOOT_REQUIRED=0
+
+echo "==> Configuring lorawan-tracker (headless)"
+
+# ── 1. Python runtime dependency: LoRaRF (not packaged in apt) ────────────────
+echo "[1/6] Installing LoRaRF Python library..."
+if pip3 install --break-system-packages LoRaRF >/dev/null 2>&1; then
+    echo "      LoRaRF installed."
+elif pip3 install LoRaRF >/dev/null 2>&1; then
+    echo "      LoRaRF installed."
 else
-    echo "  WARNING: Could not install LoRaRF automatically."
-    echo "  Please install manually: pip3 install LoRaRF"
+    echo "      WARNING: could not install LoRaRF automatically; run: pip3 install --break-system-packages LoRaRF"
 fi
 
-# Apply patched SX126x.py — fixes 'Failed to add edge detection' on Pi 4 Bookworm
-# (kernel 6.x no longer exports GPIO pins to sysfs; polling fallback required)
-PATCHED="/usr/lib/lorawan-tracker/SX126x_patched.py"
+# ── 2. Patch the SX126x driver (Pi 4 Bookworm GPIO fix) ───────────────────────
+echo "[2/6] Patching LoRaRF SX126x driver..."
+PATCHED="${APP_DIR}/SX126x_patched.py"
 if [[ -f "${PATCHED}" ]]; then
     LORA_RF_DIR=$(python3 -c "import LoRaRF, os; print(os.path.dirname(LoRaRF.__file__))" 2>/dev/null || true)
     if [[ -n "${LORA_RF_DIR}" && -f "${LORA_RF_DIR}/SX126x.py" ]]; then
         cp "${PATCHED}" "${LORA_RF_DIR}/SX126x.py"
-        echo "  LoRaRF SX126x driver patched at ${LORA_RF_DIR}/SX126x.py"
+        echo "      Patched ${LORA_RF_DIR}/SX126x.py"
+    else
+        echo "      Skipped (LoRaRF not found yet)."
     fi
 fi
 
-# Enable SPI interface (required for the LoRa HAT)
-if command -v raspi-config &>/dev/null; then
-    echo "Enabling SPI interface..."
-    raspi-config nonint do_spi 0 2>/dev/null || true
+# ── 3. Raspberry Pi hardware setup (SPI/UART/BT/serial console) ────────────────
+echo "[3/6] Configuring Raspberry Pi hardware..."
+if [[ -x "${APP_DIR}/rpi_setup.sh" ]]; then
+    SETUP_OUT="$(bash "${APP_DIR}/rpi_setup.sh" 2>&1 || true)"
+    echo "${SETUP_OUT}" | sed 's/^/      /'
+    if echo "${SETUP_OUT}" | grep -q "REBOOT_REQUIRED"; then
+        REBOOT_REQUIRED=1
+    fi
 fi
 
-# Refresh desktop application menu
-if command -v update-desktop-database &>/dev/null; then
-    update-desktop-database /usr/share/applications 2>/dev/null || true
+# ── 4. Create config and state directories ────────────────────────────────────
+echo "[4/6] Creating config and state directories..."
+mkdir -p "${CONFIG_DIR}" "${STATE_DIR}"
+chmod 0755 "${STATE_DIR}"
+
+# ── 5. Generate device credentials from the Pi serial (if not already present) ─
+echo "[5/6] Generating device credentials..."
+if ! python3 "${APP_DIR}/lorawan_keygen.py" --config "${CONFIG_FILE}"; then
+    echo "      WARNING: credential generation failed; run manually:"
+    echo "        sudo python3 ${APP_DIR}/lorawan_keygen.py --config ${CONFIG_FILE}"
+fi
+
+# ── 6. Install and start the systemd service ──────────────────────────────────
+echo "[6/6] Enabling lorawan-tracker service..."
+if [[ -d /run/systemd/system ]]; then
+    systemctl daemon-reload || true
+    systemctl enable "${SERVICE}" >/dev/null 2>&1 || true
+    if [[ "${REBOOT_REQUIRED}" -eq 0 ]]; then
+        systemctl restart "${SERVICE}" || true
+        echo "      Service started."
+    else
+        echo "      Service enabled; it will start after the required reboot."
+    fi
+else
+    echo "      systemd not running here; service enabled for next boot."
+    systemctl enable "${SERVICE}" >/dev/null 2>&1 || true
 fi
 
 echo ""
-echo "Installation complete!"
-echo "  Launch from the desktop menu, or run:  lorawan-tracker"
-echo "  Your config will be saved to:  ~/.config/lorawan-tracker/"
+echo "============================================================"
+echo "  lorawan-tracker installed and configured."
+echo "  Credentials : ${CONFIG_DIR}/device_keys.txt"
+echo "  Service     : systemctl status ${SERVICE}"
+echo "  Logs        : journalctl -u ${SERVICE} -f"
+if [[ "${REBOOT_REQUIRED}" -eq 1 ]]; then
+    echo ""
+    echo "  >>> A REBOOT IS REQUIRED to finish hardware setup: sudo reboot"
+    echo "      After reboot the tracker starts automatically."
+fi
+echo "============================================================"
+
+exit 0
