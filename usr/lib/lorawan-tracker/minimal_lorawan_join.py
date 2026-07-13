@@ -74,7 +74,7 @@ DEFAULT_JOIN_CODING_RATE = 5
 DEFAULT_JOIN_PREAMBLE = 8
 DEFAULT_PUBLIC_SYNC_WORD = 0x3444
 DEFAULT_TX_POWER = 14
-DEFAULT_JOIN_ACCEPT_TIMEOUT = 30.0
+DEFAULT_JOIN_ACCEPT_TIMEOUT = 2.0
 DEFAULT_TX_TIMEOUT = 10.0
 DEFAULT_JOIN_RETRY_DELAY = 30.0
 
@@ -385,16 +385,19 @@ def main() -> int:
                 # LoRaWAN join-accept receive windows (LoRaWAN 1.0 defaults)
                 # RX1: same freq/DR, opens JOIN_ACCEPT_DELAY1 (5 s) after TX
                 # RX2: 869.525 MHz / SF12, opens JOIN_ACCEPT_DELAY2 (6 s) after TX
+                JOIN_ACCEPT_DELAY1 = 5.0
                 JOIN_ACCEPT_DELAY2 = 6.0  # seconds after end of TX
+                window_timeout = max(0.5, min(float(args.join_accept_timeout), 2.0))
+                rx1_timeout = min(window_timeout, JOIN_ACCEPT_DELAY2 - JOIN_ACCEPT_DELAY1)
+                rx2_timeout = window_timeout
 
                 downlink = None
                 decoded: dict | None = None
                 for rx_freq, rx_sf, rx_bw, rx_label, rx_timeout, rx_abs_delay in [
-                    (frequency,   spreading_factor, bandwidth, "RX1", args.join_accept_timeout, 0.0),
-                    (869_525_000, 12,               125_000,  "RX2", 3.0,                      JOIN_ACCEPT_DELAY2),
+                    (frequency,   spreading_factor, bandwidth, "RX1", rx1_timeout,  JOIN_ACCEPT_DELAY1),
+                    (869_525_000, 12,               125_000,  "RX2", rx2_timeout,  JOIN_ACCEPT_DELAY2),
                 ]:
-                    # Bug 2 fix: open RX2 at exactly JOIN_ACCEPT_DELAY2 after TX end,
-                    # not after the full RX1 timeout expires.
+                    # Open each receive window at its scheduled offset from TX end.
                     if rx_abs_delay > 0:
                         wait_s = (t_tx_done + rx_abs_delay) - time.time()
                         if wait_s > 0:

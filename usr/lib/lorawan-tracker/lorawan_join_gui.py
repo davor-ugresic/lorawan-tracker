@@ -28,7 +28,7 @@ except Exception:
                 text=True, stderr=_sp2.DEVNULL
             ).strip()
     except Exception:
-        VERSION = "1.3.21"
+        VERSION = "1.3.22"
 
 APP_DIR = Path(__file__).resolve().parent
 JOIN_SCRIPT = APP_DIR / "minimal_lorawan_join.py"
@@ -95,7 +95,7 @@ DEFAULTS = {
     "uplink_interval": 10,
     "tx_power": 14,
     "sync_word": "0x3444",
-    "join_accept_timeout": 30.0,
+    "join_accept_timeout": 2.0,
     "join_retry_delay": 30,
     "tx_timeout": 10.0,
     "scan_eu868": True,
