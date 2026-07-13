@@ -1,16 +1,46 @@
 #!/bin/bash
 # postinst — headless setup for lorawan-tracker.
-# Runs on the target Raspberry Pi during `apt install`. Idempotent.
+# Provisions the app for the Pi's primary user so it matches the GUI model:
+#   * config + credentials in ~/.config/lorawan-tracker/
+#   * a per-user systemd service (with linger) that runs headless without login
+# Idempotent.
 set -e
 
 APP_DIR="/usr/lib/lorawan-tracker"
-CONFIG_DIR="/etc/lorawan-tracker"
-CONFIG_FILE="${CONFIG_DIR}/lorawan_join.json"
-STATE_DIR="/var/lib/lorawan-tracker"
 SERVICE="lorawan-tracker.service"
 REBOOT_REQUIRED=0
 
-echo "==> Configuring lorawan-tracker (headless)"
+# ── Determine the target (Pi primary) user ────────────────────────────────────
+TARGET_USER="${SUDO_USER:-}"
+if [[ -z "${TARGET_USER}" || "${TARGET_USER}" == "root" ]]; then
+    TARGET_USER="$(getent passwd 1000 | cut -d: -f1 || true)"
+fi
+if [[ -z "${TARGET_USER}" ]]; then
+    echo "ERROR: could not determine the primary user; run keygen/service setup manually." >&2
+    exit 0
+fi
+TARGET_HOME="$(getent passwd "${TARGET_USER}" | cut -d: -f6)"
+TARGET_UID="$(id -u "${TARGET_USER}")"
+CONFIG_DIR="${TARGET_HOME}/.config/lorawan-tracker"
+CONFIG_FILE="${CONFIG_DIR}/lorawan_join.json"
+USER_UNIT_DIR="${TARGET_HOME}/.config/systemd/user"
+USER_UNIT="${USER_UNIT_DIR}/${SERVICE}"
+
+echo "==> Configuring lorawan-tracker for user '${TARGET_USER}' (headless)"
+
+run_as_user() {
+    sudo -u "${TARGET_USER}" \
+        XDG_RUNTIME_DIR="/run/user/${TARGET_UID}" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${TARGET_UID}/bus" \
+        "$@"
+}
+
+# ── Clean up any previous system-level service (from 1.4.x) ────────────────────
+if [[ -d /run/systemd/system ]]; then
+    systemctl disable --now "${SERVICE}" 2>/dev/null || true
+    rm -f /etc/systemd/system/"${SERVICE}" /usr/lib/systemd/system/"${SERVICE}" /lib/systemd/system/"${SERVICE}" 2>/dev/null || true
+    systemctl daemon-reload 2>/dev/null || true
+fi
 
 # ── 1. Python runtime dependency: LoRaRF (not packaged in apt) ────────────────
 echo "[1/6] Installing LoRaRF Python library..."
@@ -45,40 +75,61 @@ if [[ -x "${APP_DIR}/rpi_setup.sh" ]]; then
     fi
 fi
 
-# ── 4. Create config and state directories ────────────────────────────────────
-echo "[4/6] Creating config and state directories..."
-mkdir -p "${CONFIG_DIR}" "${STATE_DIR}"
-chmod 0755 "${STATE_DIR}"
-
-# ── 5. Generate device credentials from the Pi serial (if not already present) ─
-echo "[5/6] Generating device credentials..."
+# ── 4. Generate device credentials from the Pi serial (if not already present) ─
+echo "[4/6] Generating device credentials..."
+install -d -m 0700 -o "${TARGET_USER}" -g "${TARGET_USER}" "${CONFIG_DIR}"
 if ! python3 "${APP_DIR}/lorawan_keygen.py" --config "${CONFIG_FILE}"; then
     echo "      WARNING: credential generation failed; run manually:"
-    echo "        sudo python3 ${APP_DIR}/lorawan_keygen.py --config ${CONFIG_FILE}"
+    echo "        python3 ${APP_DIR}/lorawan_keygen.py --config ${CONFIG_FILE}"
 fi
+chown -R "${TARGET_USER}:${TARGET_USER}" "${CONFIG_DIR}"
 
-# ── 6. Install and start the systemd service ──────────────────────────────────
-echo "[6/6] Enabling lorawan-tracker service..."
-if [[ -d /run/systemd/system ]]; then
-    systemctl daemon-reload || true
-    systemctl enable "${SERVICE}" >/dev/null 2>&1 || true
-    if [[ "${REBOOT_REQUIRED}" -eq 0 ]]; then
-        systemctl restart "${SERVICE}" || true
-        echo "      Service started."
-    else
-        echo "      Service enabled; it will start after the required reboot."
-    fi
+# ── 5. Install the per-user systemd service ───────────────────────────────────
+echo "[5/6] Installing user service..."
+install -d -m 0755 -o "${TARGET_USER}" -g "${TARGET_USER}" "${USER_UNIT_DIR}"
+cat > "${USER_UNIT}" <<EOF
+[Unit]
+Description=LoRaWAN GPS Tracker
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -u ${APP_DIR}/lorawan_service.py --config ${CONFIG_FILE}
+WorkingDirectory=${TARGET_HOME}
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=30s
+
+[Install]
+WantedBy=default.target
+EOF
+chown "${TARGET_USER}:${TARGET_USER}" "${USER_UNIT}"
+
+# Let the user's services run without an active login session.
+loginctl enable-linger "${TARGET_USER}" 2>/dev/null || true
+
+# ── 6. Enable and start the service ───────────────────────────────────────────
+echo "[6/6] Enabling and starting service..."
+# Wait briefly for the lingering user manager / runtime dir to come up.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+    [[ -d "/run/user/${TARGET_UID}" ]] && break
+    sleep 1
+done
+run_as_user systemctl --user daemon-reload 2>/dev/null || true
+run_as_user systemctl --user enable "${SERVICE}" >/dev/null 2>&1 || true
+if [[ "${REBOOT_REQUIRED}" -eq 0 ]]; then
+    run_as_user systemctl --user restart "${SERVICE}" 2>/dev/null || true
+    echo "      Service started."
 else
-    echo "      systemd not running here; service enabled for next boot."
-    systemctl enable "${SERVICE}" >/dev/null 2>&1 || true
+    echo "      Service enabled; it will start after the required reboot."
 fi
 
 echo ""
 echo "============================================================"
-echo "  lorawan-tracker installed and configured."
+echo "  lorawan-tracker installed for user '${TARGET_USER}'."
 echo "  Credentials : ${CONFIG_DIR}/device_keys.txt"
-echo "  Service     : systemctl status ${SERVICE}"
-echo "  Logs        : journalctl -u ${SERVICE} -f"
+echo "  Service     : systemctl --user status ${SERVICE}"
+echo "  Logs        : journalctl --user -u ${SERVICE} -f"
 if [[ "${REBOOT_REQUIRED}" -eq 1 ]]; then
     echo ""
     echo "  >>> A REBOOT IS REQUIRED to finish hardware setup: sudo reboot"

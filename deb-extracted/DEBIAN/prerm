@@ -1,7 +1,20 @@
 #!/bin/bash
 set -e
 
-# Stop the system service before removal/upgrade (best-effort).
+# Stop the per-user service before removal/upgrade (best-effort).
+TARGET_USER="${SUDO_USER:-}"
+if [[ -z "${TARGET_USER}" || "${TARGET_USER}" == "root" ]]; then
+    TARGET_USER="$(getent passwd 1000 | cut -d: -f1 || true)"
+fi
+if [[ -n "${TARGET_USER}" ]]; then
+    TARGET_UID="$(id -u "${TARGET_USER}" 2>/dev/null || true)"
+    if [[ -n "${TARGET_UID}" ]]; then
+        sudo -u "${TARGET_USER}" XDG_RUNTIME_DIR="/run/user/${TARGET_UID}" \
+            systemctl --user stop lorawan-tracker.service 2>/dev/null || true
+    fi
+fi
+
+# Stop any legacy system-level service too.
 if [[ -d /run/systemd/system ]] && command -v systemctl &>/dev/null; then
     systemctl stop lorawan-tracker.service 2>/dev/null || true
 fi
