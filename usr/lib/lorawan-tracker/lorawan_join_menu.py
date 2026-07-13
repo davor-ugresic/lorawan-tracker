@@ -60,6 +60,7 @@ def build_command(config: dict) -> list[str]:
         ("tx_power", "--tx-power"),
         ("sync_word", "--sync-word"),
         ("join_accept_timeout", "--join-accept-timeout"),
+        ("join_retry_delay", "--join-retry-delay"),
         ("tx_timeout", "--tx-timeout"),
     ):
         if key in config and config[key] not in (None, ""):
@@ -103,6 +104,7 @@ def collect_join_config(existing: dict | None = None) -> dict:
     config["tx_power"] = prompt("TX power (dBm)", str(existing.get("tx_power", "14")))
     config["sync_word"] = prompt("Sync word", existing.get("sync_word", "0x3444"))
     config["join_accept_timeout"] = prompt("Join accept timeout (seconds)", str(existing.get("join_accept_timeout", "8.0")))
+    config["join_retry_delay"] = prompt("Join retry delay (seconds)", str(existing.get("join_retry_delay", "30")))
     config["tx_timeout"] = prompt("TX timeout (seconds)", str(existing.get("tx_timeout", "10.0")))
 
     scan_default = "y" if existing.get("scan_eu868", True) else "n"

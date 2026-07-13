@@ -76,6 +76,7 @@ DEFAULT_PUBLIC_SYNC_WORD = 0x3444
 DEFAULT_TX_POWER = 14
 DEFAULT_JOIN_ACCEPT_TIMEOUT = 12.0
 DEFAULT_TX_TIMEOUT = 10.0
+DEFAULT_JOIN_RETRY_DELAY = 30.0
 
 EU868_JOIN_CHANNELS = (
     (868_100_000, 125_000, 12),
@@ -264,6 +265,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sync-word", type=parse_sync_word, default=DEFAULT_PUBLIC_SYNC_WORD, help="Sync word: public, private, or a hex value")
     parser.add_argument("--tx-timeout", type=float, default=DEFAULT_TX_TIMEOUT, help="Transmit timeout in seconds")
     parser.add_argument("--join-accept-timeout", type=float, default=DEFAULT_JOIN_ACCEPT_TIMEOUT, help="Join accept receive timeout in seconds")
+    parser.add_argument("--join-retry-delay", type=float, default=DEFAULT_JOIN_RETRY_DELAY, help="Delay in seconds before retrying the join cycle")
     parser.add_argument("--scan-eu868", action="store_true", help="Try the standard EU868 OTAA join channels one by one")
     return parser
 
@@ -305,6 +307,8 @@ def main() -> int:
             args.sync_word = parse_sync_word(str(config["sync_word"]))
         if "join_accept_timeout" in config:
             args.join_accept_timeout = float(config["join_accept_timeout"])
+        if "join_retry_delay" in config:
+            args.join_retry_delay = float(config["join_retry_delay"])
         if "tx_timeout" in config:
             args.tx_timeout = float(config["tx_timeout"])
         if config.get("scan_eu868"):
@@ -344,119 +348,118 @@ def main() -> int:
         if args.scan_eu868:
             print("EU868 scan mode enabled: trying standard join channels one by one")
 
-        for frequency, bandwidth, spreading_factor in channels:
-            current_dev_nonce = dev_nonce if dev_nonce is not None else secrets.token_bytes(2)
-            attempt_marker = secrets.token_hex(3).upper()
-            join_request = make_join_request(app_eui, dev_eui, app_key, current_dev_nonce)
+        while True:
+            for frequency, bandwidth, spreading_factor in channels:
+                current_dev_nonce = dev_nonce if dev_nonce is not None else secrets.token_bytes(2)
+                attempt_marker = secrets.token_hex(3).upper()
+                join_request = make_join_request(app_eui, dev_eui, app_key, current_dev_nonce)
 
-            radio.setFrequency(frequency)
-            ldro = (2 ** spreading_factor / bandwidth) > 0.016  # LDRO required when symbol time > 16 ms
-            radio.setLoRaModulation(spreading_factor, bandwidth, args.join_coding_rate, ldro)
-            radio.setLoRaPacket(radio.HEADER_EXPLICIT, args.join_preamble, 255, True, False)
+                radio.setFrequency(frequency)
+                ldro = (2 ** spreading_factor / bandwidth) > 0.016  # LDRO required when symbol time > 16 ms
+                radio.setLoRaModulation(spreading_factor, bandwidth, args.join_coding_rate, ldro)
+                radio.setLoRaPacket(radio.HEADER_EXPLICIT, args.join_preamble, 255, True, False)
 
-            print(
-                "join request frame: "
-                f"attempt={attempt_marker} "
-                f"app_eui={format_eui(app_eui)} "
-                f"dev_eui={format_eui(dev_eui)} "
-                f"app_eui_wire={format_wire_eui(app_eui)} "
-                f"dev_eui_wire={format_wire_eui(dev_eui)} "
-                f"dev_nonce={current_dev_nonce.hex().upper()} "
-                f"freq={frequency} "
-                f"bw={bandwidth} "
-                f"sf={spreading_factor} "
-                f"phy={join_request.hex().upper()}"
-            )
-
-            radio.beginPacket()
-            radio.put(join_request)
-            radio.endPacket()
-            if not radio.wait(args.tx_timeout):
-                raise TimeoutError("join-request transmit timed out")
-
-            t_tx_done = time.time()   # anchor for RX window timing
-            print("join request sent, waiting for join accept...")
-
-            # LoRaWAN join-accept receive windows (LoRaWAN 1.0 defaults)
-            # RX1: same freq/DR, opens JOIN_ACCEPT_DELAY1 (5 s) after TX
-            # RX2: 869.525 MHz / SF12, opens JOIN_ACCEPT_DELAY2 (6 s) after TX
-            JOIN_ACCEPT_DELAY2 = 6.0  # seconds after end of TX
-
-            downlink = None
-            decoded: dict | None = None
-            for rx_freq, rx_sf, rx_bw, rx_label, rx_timeout, rx_abs_delay in [
-                (frequency,   spreading_factor, bandwidth, "RX1", args.join_accept_timeout, 0.0),
-                (869_525_000, 12,               125_000,  "RX2", 3.0,                      JOIN_ACCEPT_DELAY2),
-            ]:
-                # Bug 2 fix: open RX2 at exactly JOIN_ACCEPT_DELAY2 after TX end,
-                # not after the full RX1 timeout expires.
-                if rx_abs_delay > 0:
-                    wait_s = (t_tx_done + rx_abs_delay) - time.time()
-                    if wait_s > 0:
-                        time.sleep(wait_s)
-
-                radio.setFrequency(rx_freq)
-                ldro_rx = (2 ** rx_sf / rx_bw) > 0.016
-                radio.setLoRaModulation(rx_sf, rx_bw, args.join_coding_rate, ldro_rx)
-                radio.setLoRaPacket(radio.HEADER_EXPLICIT, args.join_preamble, 255, False, True)
-                radio.request(radio.RX_CONTINUOUS)
-                t_rx = time.time()
-                while (time.time() - t_rx) < rx_timeout:
-                    irq = radio.getIrqStatus()
-                    if irq & (radio.IRQ_RX_DONE | radio.IRQ_CRC_ERR | radio.IRQ_HEADER_ERR):
-                        # Refresh from radio — available() returns stale TX length without this
-                        (radio._payloadTxRx, radio._bufferIndex) = radio.getRxBufferStatus()
-                        pkt_len = radio.available()
-                        print(f"{rx_label} IRQ=0x{irq:04X} available={pkt_len} t={time.time()-t_rx:.2f}s")
-                        if irq & radio.IRQ_RX_DONE and pkt_len > 0:
-                            raw = radio.get(pkt_len)
-                            if raw and raw[0] == 0x20:  # JoinAccept MHDR
-                                # Bug 1 fix: verify MIC before accepting; keep polling on failure.
-                                try:
-                                    decoded = parse_join_accept_frame(raw, app_key)
-                                    downlink = raw
-                                except ValueError as exc:
-                                    print(f"{rx_label} rejected frame: {exc}, still waiting...")
-                                    radio.clearIrqStatus(0x03FF)
-                                    continue
-                            else:
-                                mhdr = raw[0] if raw else 0
-                                print(f"{rx_label} ignored spurious frame mhdr=0x{mhdr:02x} len={pkt_len} (not JoinAccept), still waiting...")
-                                radio.clearIrqStatus(0x03FF)
-                                continue  # keep polling
-                        radio.clearIrqStatus(0x03FF)
-                        break
-                    time.sleep(0.01)
-                else:
-                    print(f"{rx_label} timeout ({rx_timeout}s)")
-                    radio.clearIrqStatus(0x03FF)
-                if downlink:
-                    break
-
-            if not decoded:
-                if args.scan_eu868:
-                    continue
-                raise TimeoutError("no join accept received")
-
-            # decoded is already populated and MIC-verified in the RX loop above
-            nwk_skey, app_skey = derive_session_keys(app_key, decoded["join_nonce"], decoded["net_id"], current_dev_nonce)
-            if args.config:
-                session_path = Path(args.config).with_name(Path(args.config).stem + "_session.json")
-                save_session_file(
-                    session_path,
-                    decoded["dev_addr"],
-                    nwk_skey,
-                    app_skey,
-                    join_fingerprint(app_eui, dev_eui, app_key),
+                print(
+                    "join request frame: "
+                    f"attempt={attempt_marker} "
+                    f"app_eui={format_eui(app_eui)} "
+                    f"dev_eui={format_eui(dev_eui)} "
+                    f"app_eui_wire={format_wire_eui(app_eui)} "
+                    f"dev_eui_wire={format_wire_eui(dev_eui)} "
+                    f"dev_nonce={current_dev_nonce.hex().upper()} "
+                    f"freq={frequency} "
+                    f"bw={bandwidth} "
+                    f"sf={spreading_factor} "
+                    f"phy={join_request.hex().upper()}"
                 )
 
-            print(f"join accept received, dev_addr={decoded['dev_addr'][::-1].hex().upper()}")
-            print(f"join nonce={decoded['join_nonce'].hex().upper()} net_id={decoded['net_id'].hex().upper()}")
-            print(f"nwk_skey={nwk_skey.hex().upper()}")
-            print(f"app_skey={app_skey.hex().upper()}")
-            return 0
+                radio.beginPacket()
+                radio.put(join_request)
+                radio.endPacket()
+                if not radio.wait(args.tx_timeout):
+                    raise TimeoutError("join-request transmit timed out")
 
-        raise TimeoutError("no join accept received on any EU868 channel")
+                t_tx_done = time.time()   # anchor for RX window timing
+                print("join request sent, waiting for join accept...")
+
+                # LoRaWAN join-accept receive windows (LoRaWAN 1.0 defaults)
+                # RX1: same freq/DR, opens JOIN_ACCEPT_DELAY1 (5 s) after TX
+                # RX2: 869.525 MHz / SF12, opens JOIN_ACCEPT_DELAY2 (6 s) after TX
+                JOIN_ACCEPT_DELAY2 = 6.0  # seconds after end of TX
+
+                downlink = None
+                decoded: dict | None = None
+                for rx_freq, rx_sf, rx_bw, rx_label, rx_timeout, rx_abs_delay in [
+                    (frequency,   spreading_factor, bandwidth, "RX1", args.join_accept_timeout, 0.0),
+                    (869_525_000, 12,               125_000,  "RX2", 3.0,                      JOIN_ACCEPT_DELAY2),
+                ]:
+                    # Bug 2 fix: open RX2 at exactly JOIN_ACCEPT_DELAY2 after TX end,
+                    # not after the full RX1 timeout expires.
+                    if rx_abs_delay > 0:
+                        wait_s = (t_tx_done + rx_abs_delay) - time.time()
+                        if wait_s > 0:
+                            time.sleep(wait_s)
+
+                    radio.setFrequency(rx_freq)
+                    ldro_rx = (2 ** rx_sf / rx_bw) > 0.016
+                    radio.setLoRaModulation(rx_sf, rx_bw, args.join_coding_rate, ldro_rx)
+                    radio.setLoRaPacket(radio.HEADER_EXPLICIT, args.join_preamble, 255, False, True)
+                    radio.request(radio.RX_CONTINUOUS)
+                    t_rx = time.time()
+                    while (time.time() - t_rx) < rx_timeout:
+                        irq = radio.getIrqStatus()
+                        if irq & (radio.IRQ_RX_DONE | radio.IRQ_CRC_ERR | radio.IRQ_HEADER_ERR):
+                            # Refresh from radio — available() returns stale TX length without this
+                            (radio._payloadTxRx, radio._bufferIndex) = radio.getRxBufferStatus()
+                            pkt_len = radio.available()
+                            print(f"{rx_label} IRQ=0x{irq:04X} available={pkt_len} t={time.time()-t_rx:.2f}s")
+                            if irq & radio.IRQ_RX_DONE and pkt_len > 0:
+                                raw = radio.get(pkt_len)
+                                if raw and raw[0] == 0x20:  # JoinAccept MHDR
+                                    # Bug 1 fix: verify MIC before accepting; keep polling on failure.
+                                    try:
+                                        decoded = parse_join_accept_frame(raw, app_key)
+                                        downlink = raw
+                                    except ValueError as exc:
+                                        print(f"{rx_label} rejected frame: {exc}, still waiting...")
+                                        radio.clearIrqStatus(0x03FF)
+                                        continue
+                                else:
+                                    mhdr = raw[0] if raw else 0
+                                    print(f"{rx_label} ignored spurious frame mhdr=0x{mhdr:02x} len={pkt_len} (not JoinAccept), still waiting...")
+                                    radio.clearIrqStatus(0x03FF)
+                                    continue  # keep polling
+                            radio.clearIrqStatus(0x03FF)
+                            break
+                        time.sleep(0.01)
+                    else:
+                        print(f"{rx_label} timeout ({rx_timeout}s)")
+                        radio.clearIrqStatus(0x03FF)
+                    if downlink:
+                        break
+
+                if decoded:
+                    # decoded is already populated and MIC-verified in the RX loop above
+                    nwk_skey, app_skey = derive_session_keys(app_key, decoded["join_nonce"], decoded["net_id"], current_dev_nonce)
+                    if args.config:
+                        session_path = Path(args.config).with_name(Path(args.config).stem + "_session.json")
+                        save_session_file(
+                            session_path,
+                            decoded["dev_addr"],
+                            nwk_skey,
+                            app_skey,
+                            join_fingerprint(app_eui, dev_eui, app_key),
+                        )
+
+                    print(f"join accept received, dev_addr={decoded['dev_addr'][::-1].hex().upper()}")
+                    print(f"join nonce={decoded['join_nonce'].hex().upper()} net_id={decoded['net_id'].hex().upper()}")
+                    print(f"nwk_skey={nwk_skey.hex().upper()}")
+                    print(f"app_skey={app_skey.hex().upper()}")
+                    return 0
+
+            print(f"join cycle failed; retrying in {args.join_retry_delay:.0f} seconds...")
+            time.sleep(args.join_retry_delay)
+
     finally:
         radio.end()
 
