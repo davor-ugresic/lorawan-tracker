@@ -99,13 +99,33 @@ def build_config(creds: dict[str, str]) -> dict[str, object]:
     }
 
 
+# Shipped example/placeholder values (from lorawan_join.example.json). A config
+# carrying these is treated as unprovisioned so real credentials get generated.
+_PLACEHOLDER_VALUES = {
+    "0011223344556677",
+    "AABBCCDDEEFF0011",
+    "00112233445566778899AABBCCDDEEFF",
+    "0000000000000000",
+    "FFFFFFFFFFFFFFFF",
+}
+
+
 def _has_valid_keys(cfg: object) -> bool:
-    return (
-        isinstance(cfg, dict)
-        and bool(cfg.get("app_eui"))
-        and bool(cfg.get("dev_eui"))
-        and bool(cfg.get("app_key"))
-    )
+    if not isinstance(cfg, dict):
+        return False
+    app_eui = str(cfg.get("app_eui") or "").upper()
+    dev_eui = str(cfg.get("dev_eui") or "").upper()
+    app_key = str(cfg.get("app_key") or "").upper()
+    if not (app_eui and dev_eui and app_key):
+        return False
+    # Do not treat the shipped placeholders as provisioned credentials.
+    if (
+        dev_eui in _PLACEHOLDER_VALUES
+        or app_eui in _PLACEHOLDER_VALUES
+        or app_key in _PLACEHOLDER_VALUES
+    ):
+        return False
+    return True
 
 
 def main() -> int:
