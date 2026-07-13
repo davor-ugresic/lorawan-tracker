@@ -5,15 +5,9 @@ Maintainer: Pi LoRa User <user@example.com>
 Installed-Size: 304
 Depends: python3 (>= 3.9), python3-tk, python3-spidev, python3-pycryptodome
 Recommends: python3-rpi.gpio | python3-lgpio
-Filename: pool/main/lorawan-tracker_1.3.21_all.deb
-Size: 89178
-MD5sum: ccaf0dc9983ffed0445175e01ed6240b
-SHA1: 1337486215046970d24a432d9e308986af0bf3e3
-SHA256: 8a1354f384432b2ce33052915b58c846b74a9b59fbae4b90fb05359441e40f29
 Section: misc
 Priority: optional
 Homepage: https://www.waveshare.com/wiki/SX1262_LORAWAN_HAT
 Description: LoRaWAN OTAA tracker for Waveshare SX126x HAT
  GUI application to configure and manage LoRaWAN OTAA join and uplink
  for the Waveshare SX126x LoRa HAT on Raspberry Pi.
-

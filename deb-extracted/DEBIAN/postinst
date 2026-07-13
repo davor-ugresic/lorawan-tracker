@@ -1,0 +1,40 @@
+#!/bin/bash
+set -e
+
+# Install LoRaRF from PyPI (not available as an apt package)
+echo "Installing LoRaRF Python library..."
+if pip3 install --break-system-packages LoRaRF 2>/dev/null; then
+    echo "  LoRaRF installed."
+elif pip3 install LoRaRF 2>/dev/null; then
+    echo "  LoRaRF installed."
+else
+    echo "  WARNING: Could not install LoRaRF automatically."
+    echo "  Please install manually: pip3 install LoRaRF"
+fi
+
+# Apply patched SX126x.py — fixes 'Failed to add edge detection' on Pi 4 Bookworm
+# (kernel 6.x no longer exports GPIO pins to sysfs; polling fallback required)
+PATCHED="/usr/lib/lorawan-tracker/SX126x_patched.py"
+if [[ -f "${PATCHED}" ]]; then
+    LORA_RF_DIR=$(python3 -c "import LoRaRF, os; print(os.path.dirname(LoRaRF.__file__))" 2>/dev/null || true)
+    if [[ -n "${LORA_RF_DIR}" && -f "${LORA_RF_DIR}/SX126x.py" ]]; then
+        cp "${PATCHED}" "${LORA_RF_DIR}/SX126x.py"
+        echo "  LoRaRF SX126x driver patched at ${LORA_RF_DIR}/SX126x.py"
+    fi
+fi
+
+# Enable SPI interface (required for the LoRa HAT)
+if command -v raspi-config &>/dev/null; then
+    echo "Enabling SPI interface..."
+    raspi-config nonint do_spi 0 2>/dev/null || true
+fi
+
+# Refresh desktop application menu
+if command -v update-desktop-database &>/dev/null; then
+    update-desktop-database /usr/share/applications 2>/dev/null || true
+fi
+
+echo ""
+echo "Installation complete!"
+echo "  Launch from the desktop menu, or run:  lorawan-tracker"
+echo "  Your config will be saved to:  ~/.config/lorawan-tracker/"
