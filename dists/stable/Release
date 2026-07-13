@@ -2,13 +2,13 @@ Origin: LoRaWAN Tracker
 Label: LoRaWAN Tracker
 Suite: stable
 Codename: stable
-Date: Mon, 13 Jul 2026 07:50:14 +0000
+Date: Mon, 13 Jul 2026 08:02:17 +0000
 Architectures: all
 Components: main
 Description: LoRaWAN tracker packages for Raspberry Pi
 MD5Sum:
  d8dd1fd6215694d706fc1da15b30ba58 743 main/binary-all/Packages
- 9eda1abfc785be68254320a047c7c0ba 519 main/binary-all/Packages.gz
+ ae66893582e4f3d05c22d107de8cc791 519 main/binary-all/Packages.gz
 SHA256:
  00f179c9d3b37d0163899e0d9c3cb8b387833503ee89a7e39007a76b6e90d4ca 743 main/binary-all/Packages
- 6602256f4d37cdd2851afbda24175cb64ab2c6d6c1d439109fffe79ef9771922 519 main/binary-all/Packages.gz
+ b27a10d5beebb186445a3f804fe387a5284ef2afbceceabf7fd84ffb78b441cc 519 main/binary-all/Packages.gz
