@@ -74,7 +74,7 @@ DEFAULT_JOIN_CODING_RATE = 5
 DEFAULT_JOIN_PREAMBLE = 8
 DEFAULT_PUBLIC_SYNC_WORD = 0x3444
 DEFAULT_TX_POWER = 14
-DEFAULT_JOIN_ACCEPT_TIMEOUT = 2.0
+DEFAULT_JOIN_ACCEPT_TIMEOUT = 12.0
 DEFAULT_TX_TIMEOUT = 10.0
 DEFAULT_JOIN_RETRY_DELAY = 30.0
 
@@ -349,7 +349,10 @@ def main() -> int:
             print("EU868 scan mode enabled: trying standard join channels one by one")
 
         while True:
-            for frequency, bandwidth, spreading_factor in channels:
+            for channel_index, (frequency, bandwidth, spreading_factor) in enumerate(channels):
+                if args.scan_eu868 and channel_index > 0:
+                    print(f"channel hop delay: sleeping {args.join_retry_delay:.0f} seconds before next frequency")
+                    time.sleep(args.join_retry_delay)
                 current_dev_nonce = dev_nonce if dev_nonce is not None else secrets.token_bytes(2)
                 attempt_marker = secrets.token_hex(3).upper()
                 join_request = make_join_request(app_eui, dev_eui, app_key, current_dev_nonce)
@@ -387,8 +390,12 @@ def main() -> int:
                 # RX2: 869.525 MHz / SF12, opens JOIN_ACCEPT_DELAY2 (6 s) after TX
                 JOIN_ACCEPT_DELAY1 = 5.0
                 JOIN_ACCEPT_DELAY2 = 6.0  # seconds after end of TX
-                window_timeout = max(0.5, min(float(args.join_accept_timeout), 2.0))
-                rx1_timeout = min(window_timeout, JOIN_ACCEPT_DELAY2 - JOIN_ACCEPT_DELAY1)
+                # Keep RX1 open long enough for the network server to schedule the
+                # join accept even when the gateway forwards the uplink with delay.
+                # Floor of 9 s (12 s ideal via join_accept_timeout) so a late but
+                # in-window transmit is still received.
+                window_timeout = max(9.0, float(args.join_accept_timeout))
+                rx1_timeout = window_timeout
                 rx2_timeout = window_timeout
 
                 downlink = None

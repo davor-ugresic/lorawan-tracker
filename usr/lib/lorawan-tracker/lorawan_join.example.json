@@ -4,4 +4,5 @@
   "app_key": "00112233445566778899AABBCCDDEEFF",
   "scan_eu868": true
   ,"join_retry_delay": 30
+  ,"join_accept_timeout": 12.0
 }
